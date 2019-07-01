@@ -2,6 +2,8 @@
 
 #include "svmsg_file.h"
 
+#define MSG_SND_TIMEOUT 60
+
 static int serverId; 
 
 static void
@@ -40,14 +42,29 @@ handleCleanup(int sig)
     raise(sig);
 }
 
+void
+alarmHandler(int sig)
+{
+}
+
 
 static void 
 serveRequest(const struct requestMsg *req)
 {
     int rc;
     int fd;
+    int saved_errno; 
     ssize_t numRead;
     struct responseMsg resp;
+    struct sigaction alarm_sa;
+
+    alarm_sa.sa_flags = 0;
+    sigemptyset(&alarm_sa.sa_mask);
+    alarm_sa.sa_handler = alarmHandler;
+
+    if (sigaction(SIGALRM, &alarm_sa, NULL) == -1) {
+        errExit("sigaction");
+    }
 
     fd = open(req->pathname, O_RDONLY);
     if (fd == -1) {
@@ -79,10 +96,18 @@ serveRequest(const struct requestMsg *req)
         exit(EXIT_FAILURE);
     }
 
+    alarm(MSG_SND_TIMEOUT);
     resp.mtype = RESP_MT_END;
     rc = msgsnd(req->clientId, &resp, 0, 0);
+    saved_errno = errno;
+    alarm(0);
+    errno = saved_errno;
     if (rc == -1) {
-        syslog(LOG_ERR, "Failed to send RESP_MT_END message\n");
+        if (errno == EINTR) {
+            syslog(LOG_ERR, "msgsnd timed out\n");
+        } else {
+            syslog(LOG_ERR, "Failed to send RESP_MT_END message\n");
+        }
         exit(EXIT_FAILURE);
     }
 }
