@@ -46,7 +46,8 @@ main(int argc, char *argv[])
         errExit("src_fd");
     }
 
-    dest_fd = open(argv[2], O_CREAT | O_RDWR);
+    dest_fd = open(argv[2], O_CREAT | O_RDWR, 
+                    S_IRWXU | S_IRGRP | S_IROTH);
     if (dest_fd == -1) {
         errExit("open");
     }
