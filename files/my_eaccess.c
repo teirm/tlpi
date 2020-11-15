@@ -10,7 +10,9 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include <linux/limits.h>
 
@@ -35,5 +37,17 @@ my_eaccess(const char *pathname, int mode)
 
     return 0;
 }
-    
 
+int
+main(int argc, char *argv[])
+{
+    const char *test_file = "test_file.txt";
+    int fd = open(test_file, O_CREAT);
+    if (fd == -1) {
+        fprintf(stderr, "failure to create test file '%s'\n", test_file);
+    }
+    
+    my_eaccess(test_file, R_OK);
+    
+    unlink(test_file);
+}
