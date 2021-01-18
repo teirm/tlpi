@@ -10,3 +10,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 #add file io binaries
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fileio)
+
+# add file and directory binaries
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/files)
