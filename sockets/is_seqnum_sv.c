@@ -122,7 +122,7 @@ main(int argc, char *argv[])
 
         snprintf(seq_num_str, INT_LEN, "%d\n", seq_num);
         if (write(client_fd, &seq_num_str, strlen(seq_num_str)) != strlen(seq_num_str)) {
-            fprintf(stderr, "error on write to %s addr_str");
+            fprintf(stderr, "error on write to %s", addr_str);
         }
         
         seq_num += req_len;
