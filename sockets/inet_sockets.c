@@ -33,7 +33,6 @@ static int inet_passive_socket(const char *service, int type, socklen_t *addrlen
 
     rc = getaddrinfo(NULL, service, &hints, &result);
     if (rc != 0) {
-        errno = ENOSYS;
         return -1;
     }
 
