@@ -59,6 +59,8 @@ main(int argc, char *argv[])
     int listen_fd = 0;
     int client_fd = 0;
     struct sigaction sa;
+    sigset_t orig_mask;
+    sigset_t block_mask;
 
     if (becomeDaemon(0) == -1) {
         errExit("becomeDaemon");
@@ -71,7 +73,7 @@ main(int argc, char *argv[])
         syslog(LOG_ERR, "Error from sigaction(): %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    
+
     listen_fd = inet_listen(SERVICE, BACKLOG, NULL);
     if (listen_fd == -1) {
         syslog(LOG_ERR, "could not create server socket (%s)", strerror(errno));
@@ -96,12 +98,22 @@ main(int argc, char *argv[])
             /* child */
             if (child_count < MAX_CHILDREN) {
                 close(listen_fd);
-                child_count++;
                 handle_request(client_fd);
             }
             _exit(EXIT_SUCCESS);
         default:
+            sigemptyset(&block_mask);
+            sigaddset(&block_mask, SIGCHLD);
+            if (sigprocmask(SIG_BLOCK, &block_mask, &orig_mask) == -1) {
+                errExit("sigprocmask - SIG_BLOCK");
+            }
             /* parent */
+            if (child_count < MAX_CHILDREN) {
+                child_count++;
+            }
+            if (sigprocmask(SIG_SETMASK, &orig_mask, NULL) == -1) {
+                errExit("sigprocmask - SIG_SETMASK");
+            }
             close(client_fd);
             break;
         }
