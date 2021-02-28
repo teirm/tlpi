@@ -88,12 +88,13 @@ int main(int argc, char *argv[])
     char   read_buffer[MAX_BUF];
     struct epoll_event evlist[MAX_EVENTS];
     listener_args_t thread_args;
-    pthread_t        tid; 
     
+    pthread_t        listener_tid; 
+
     memzero(read_buffer, sizeof(read_buffer));
     memzero(evlist, sizeof(evlist));
     memzero(&thread_args, sizeof(thread_args));
-    memzero(&tid, sizeof(tid));
+    memzero(&listener_tid, sizeof(listener_tid));
 
     if (argc != 2) {
         fprintf(stderr, "usage: ./%s <port>\n", argv[0]);
@@ -119,7 +120,7 @@ int main(int argc, char *argv[])
     thread_args.listen_fd = listen_fd;
     thread_args.epoll_fd  = epoll_fd;
 
-    res = pthread_create(&tid, NULL, listener, &thread_args);     
+    res = pthread_create(&listener_tid, NULL, listener, &thread_args);     
     if (res == -1) {
         perror("pthread_create");
         exit(EXIT_FAILURE);
@@ -153,7 +154,9 @@ int main(int argc, char *argv[])
             if (evlist[i].events & EPOLLIN) {
                 /* 
                  * TODO: do the dumb thing now and read off the input in the
-                 * same thread as the epoll
+                 * same thread as the epoll. The smarter thing is a thread pool
+                 * but I (a) don't have that written in C right now and (b)
+                 * don't have adequate hardware to test many threads
                  */
                 res = read(evlist[i].data.fd, read_buffer, MAX_BUF-1);
                 
@@ -180,8 +183,8 @@ int main(int argc, char *argv[])
     /* shutdown path */
     running = 0;
     
-    /* join on listener prior to close epoll fd */
-    res = pthread_join(tid, NULL);
+    /* join on listener prior to closing epoll fd */
+    res = pthread_join(listener_tid, NULL);
     if (res == -1) {
         perror("pthread_join");
     }
