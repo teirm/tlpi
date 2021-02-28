@@ -31,7 +31,6 @@ typedef struct {
     int epoll_fd;
 } listener_args_t;
 
-
 /**
  * @brief thread to listen and accept connections and put 
  *        them on the epoll list
@@ -76,6 +75,7 @@ static void *listener(void *arg)
             close(client_fd);
         }
     }
+    return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -115,7 +115,10 @@ int main(int argc, char *argv[])
         perror("inet_listen");
         exit(EXIT_FAILURE);
     }
-    
+
+    thread_args.listen_fd = listen_fd;
+    thread_args.epoll_fd  = epoll_fd;
+
     res = pthread_create(&tid, NULL, listener, &thread_args);     
     if (res == -1) {
         perror("pthread_create");
@@ -153,17 +156,24 @@ int main(int argc, char *argv[])
                  * same thread as the epoll
                  */
                 res = read(evlist[i].data.fd, read_buffer, MAX_BUF-1);
+                
+                /* This check is needed in the case that the client 
+                 * has closed the connection. subsequent reads will return
+                 * zero always triggering EPOLLIN. EPOLLHUP is sent
+                 * only on shutdown(rdwr)
+                 */
+                if (res == 0) {
+                    /* client closed connection */
+                    if (close(evlist[i].data.fd) == -1) {
+                        perror("close");
+                    }
+                }
                 if (res == -1) {
                     perror("read");
                 }
-                printf("%s\n", read_buffer); 
-            } else if (evlist[i].events & (EPOLLHUP | EPOLLERR)) {
-                printf("closing fd %d\n", evlist[i].data.fd);
-                res = close(evlist[i].data.fd);
-                if (res == -1) {
-                    perror("close");
-                }
-            }
+                printf("%s", read_buffer);
+                memzero(read_buffer, sizeof(read_buffer));
+            } 
         }
     }
 
